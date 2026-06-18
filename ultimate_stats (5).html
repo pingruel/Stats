@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Ultimate Stats</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer onerror="window._xlsxLoadFailed=true"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{-webkit-tap-highlight-color:transparent}
+button,[onclick],.tab,.player-row,.history-card,.tourn-card,.chip button,.history-del,.sub-tab,select,input,.left-player,.sbt{
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+button{cursor:pointer;-webkit-appearance:none;appearance:none;font-family:inherit}
+[onclick]{cursor:pointer}
+:root{
+  --green:#1a7a4a;--green-light:#e8f5ee;--green-mid:#2d9e62;
+  --red:#c0392b;--red-light:#fdecea;
+  --amber:#d97706;--amber-light:#fef3c7;
+  --bg:#f3f4f6;--card:#fff;--border:#e5e7eb;
+  --text:#1f2937;--muted:#6b7280;
+  --radius:10px;--shadow:0 1px 4px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+
+/* HEADER */
+header{background:var(--green);color:#fff;padding:0 1.25rem;padding-top:env(safe-area-inset-top);height:calc(52px + env(safe-area-inset-top));display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:200}
+header h1{font-size:17px;font-weight:600}
+header .phase{margin-left:auto;font-size:12px;opacity:.8;background:rgba(255,255,255,.18);padding:3px 10px;border-radius:20px}
+
+/* NAV TABS */
+.tab-bar{display:flex;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:calc(52px + env(safe-area-inset-top));z-index:100}
+.tab{flex:1;padding:12px 4px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab.active{color:var(--green);border-bottom-color:var(--green)}
+
+.container{max-width:900px;margin:0 auto;padding:1.25rem 1rem}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem;margin-bottom:.875rem;box-shadow:var(--shadow)}
+.card-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:.75rem}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 18px;border-radius:7px;font-size:14px;font-weight:500;border:1px solid transparent;cursor:pointer;transition:all .15s;line-height:1}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--green);color:#fff}.btn-primary:hover{background:var(--green-mid)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{background:#a93226}
+.btn-outline{background:transparent;color:var(--text);border-color:var(--border)}.btn-outline:hover{background:var(--bg)}
+.btn-sm{padding:5px 12px;font-size:13px}
+.btn-lg{padding:12px 28px;font-size:16px}
+
+/* SCORE BAR */
+.score-bar{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:.875rem 1.25rem;margin-bottom:.875rem;box-shadow:var(--shadow)}
+.score-team{text-align:center;flex:1}
+.score-team .lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:2px}
+.score-team .pts{font-size:38px;font-weight:700;line-height:1}
+.score-team.us .pts{color:var(--green)}
+.score-team.them .pts{color:var(--red)}
+.score-sep{font-size:28px;color:var(--border);font-weight:300}
+.score-info{text-align:center;min-width:90px}
+
+/* TIMER */
+.timer-display{font-size:32px;font-weight:800;color:var(--text);letter-spacing:3px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.timer-display.running{color:var(--green)}
+.timer-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
+
+/* CHIPS */
+.player-chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--green-light);color:var(--green);border:1px solid #b8dfc9;padding:5px 10px;border-radius:20px;font-size:13px;font-weight:500}
+.chip button{background:none;border:none;cursor:pointer;color:var(--green);font-size:15px;line-height:1;padding:0 2px;opacity:.6}
+.chip button:hover{opacity:1}
+.name-input-row{display:flex;gap:8px;margin-bottom:.875rem}
+.name-input-row input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:7px;font-size:14px;outline:none}
+.name-input-row input:focus{border-color:var(--green)}
+
+/* SELECTION LIST */
+.player-list{display:flex;flex-direction:column;gap:4px}
+.player-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;border:1px solid transparent;cursor:pointer;transition:all .1s;user-select:none}
+.player-row:hover{background:var(--bg)}
+.player-row.selected{background:var(--green-light);border-color:#b8dfc9}
+.player-avatar{width:30px;height:30px;border-radius:50%;background:var(--green-light);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;border:1px solid #b8dfc9}
+.player-row.selected .player-avatar{background:var(--green);color:#fff;border-color:var(--green)}
+.player-name{flex:1;font-size:14px;font-weight:500}
+.player-meta{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap;display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.player-meta .meta-pts{font-weight:600;color:var(--text)}
+.player-meta .meta-time{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.check-icon{color:var(--green);font-size:16px;opacity:0;flex-shrink:0}
+.player-row.selected .check-icon{opacity:1}
+.sel-count{font-size:13px;color:var(--muted);margin-top:8px;text-align:right}
+.sel-count span{font-weight:600;color:var(--text)}
+
+/* GAME LAYOUT */
+.game-layout{display:grid;grid-template-columns:210px 1fr;gap:12px;align-items:start}
+.lineup-panel .player-row{cursor:default;padding:7px 8px}
+.lineup-panel .player-row:hover{background:transparent}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.stat-player-block{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:10px;box-shadow:var(--shadow)}
+.stat-player-name{font-size:13px;font-weight:600;color:var(--green);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-btns{display:flex;flex-wrap:wrap;gap:5px}
+.sbt{padding:4px 7px;font-size:12px;font-weight:600;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:var(--bg);color:var(--text);transition:all .1s;position:relative}
+.sbt:hover{background:var(--green-light);border-color:#b8dfc9;color:var(--green)}
+.sbt:active{transform:scale(.95)}
+.sbt .badge{position:absolute;top:-6px;right:-6px;background:var(--green);color:#fff;font-size:9px;font-weight:700;border-radius:10px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 3px}
+
+.action-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.875rem;align-items:center}
+
+/* SUMMARY */
+.summary-score{text-align:center;font-size:48px;font-weight:700;color:var(--green);margin:.5rem 0 .25rem}
+.summary-sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:1.25rem}
+.stats-table{width:100%;border-collapse:collapse;font-size:13px}
+.stats-table th{background:var(--green);color:#fff;padding:8px 10px;text-align:center;font-weight:600;font-size:12px;white-space:nowrap}
+.stats-table th:first-child{text-align:left;min-width:130px;position:sticky;left:0;background:var(--green)}
+.stats-table td{padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;font-variant-numeric:tabular-nums}
+.stats-table td:first-child{text-align:left;font-weight:500;position:sticky;left:0;background:var(--card)}
+.stats-table tr:hover td{background:var(--green-light)}
+.stats-table tr:hover td:first-child{background:var(--green-light)}
+.stats-table tr.total-row td{background:var(--amber-light);font-weight:700;color:var(--amber);border-top:2px solid var(--amber)}
+.stats-table tr.total-row td:first-child{background:var(--amber-light)}
+.stats-table .zero{color:#ddd}
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+
+/* HISTORY */
+.history-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:.75rem;box-shadow:var(--shadow);cursor:pointer;transition:border-color .15s}
+.history-card:hover{border-color:var(--green)}
+.history-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.history-score{font-size:22px;font-weight:700;color:var(--green)}
+.history-date{font-size:12px;color:var(--muted)}
+.history-sub{font-size:13px;color:var(--muted)}
+.history-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;border-radius:5px}
+.history-del:hover{color:var(--red);background:var(--red-light)}
+
+/* SCREENS */
+.screen{display:none}
+.screen.active{display:block}
+
+.top-actions{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:.875rem}
+.sub-tabs{display:flex;gap:8px;margin-bottom:1rem}
+.sub-tab{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--muted);transition:all .15s}
+.sub-tab.active{background:var(--green);color:#fff;border-color:var(--green)}
+
+/* TOURNAMENT */
+.tourn-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:.75rem;box-shadow:var(--shadow);cursor:pointer;transition:border-color .15s}
+.tourn-card:hover{border-color:var(--green)}
+.tourn-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.tourn-card-name{font-size:16px;font-weight:700}
+.tourn-card-sub{font-size:13px;color:var(--muted)}
+.select-row{display:flex;gap:8px;margin-bottom:.875rem}
+.select-row select{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:14px;background:var(--card);outline:none;color:var(--text)}
+.select-row select:focus{border-color:var(--green)}
+.tourn-badge{display:inline-flex;align-items:center;gap:4px;background:var(--amber-light);color:var(--amber);font-size:12px;font-weight:600;padding:3px 9px;border-radius:20px;margin-bottom:.75rem}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal-box{background:var(--card);border-radius:var(--radius);padding:1.5rem;max-width:340px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:.5rem}
+.modal-msg{font-size:14px;color:var(--muted);margin-bottom:1.25rem;line-height:1.5}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+
+@media(max-width:640px){
+  .game-layout{grid-template-columns:1fr}
+  .score-bar{padding:.75rem 1rem}
+  .score-team .pts{font-size:30px}
+  .timer-display{font-size:24px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:22px">🥏</span>
+  <h1>Ultimate Stats</h1>
+  <span id="header-match-name" style="font-size:13px;opacity:.85;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px"></span>
+  <span class="phase" id="phase-label">Roster</span>
+</header>
+
+<div class="tab-bar" id="main-tabs">
+  <div class="tab active" id="tab-game" onclick="switchTab('game')">⚽ Partita</div>
+  <div class="tab" id="tab-tournament" onclick="switchTab('tournament')">🏆 Torneo</div>
+  <div class="tab" id="tab-history" onclick="switchTab('history')">📊 Storico</div>
+</div>
+
+<!-- ═══════ GAME SECTION ═══════ -->
+<div id="section-game">
+
+  <!-- SETUP -->
+  <div id="screen-setup" class="screen active">
+    <div class="container">
+      <div class="card">
+        <div class="card-title">Torneo (opzionale)</div>
+        <div class="select-row">
+          <select id="tourn-select" onchange="onTournamentSelectChange()">
+            <option value="">— Nessun torneo —</option>
+          </select>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Nome partita</div>
+        <input type="text" id="match-name-input" placeholder="es. Amichevole vs Padova, Torneo Bologna G1..." maxlength="60" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:14px;outline:none"/>
+      </div>
+      <div class="card">
+        <div class="card-title">Aggiungi giocatori al roster</div>
+        <div class="name-input-row">
+          <input type="text" id="player-input" placeholder="Nome giocatore..." maxlength="30"/>
+          <button class="btn btn-primary" onclick="addPlayer()">Aggiungi</button>
+        </div>
+        <div class="player-chips" id="chips-container"></div>
+      </div>
+      <div style="text-align:center;margin-top:1.25rem">
+        <button class="btn btn-primary btn-lg" id="btn-start-match" onclick="startMatch()" disabled>▶ Inizia partita</button>
+        <div style="margin-top:8px;font-size:13px;color:var(--muted)" id="roster-hint">Aggiungi almeno 7 giocatori</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELECTION -->
+  <div id="screen-select" class="screen">
+    <div class="container">
+      <div class="score-bar">
+        <div class="score-team us"><div class="lbl">Noi</div><div class="pts" id="sc-us-sel">0</div></div>
+        <div class="score-sep">—</div>
+        <div class="score-team them"><div class="lbl">Loro</div><div class="pts" id="sc-them-sel">0</div></div>
+        <div class="score-info">
+          <div style="font-size:12px;color:var(--muted);font-weight:600" id="punto-num-sel">Punto 1</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span style="font-size:14px;font-weight:600">Seleziona 7 giocatori</span>
+        <button class="btn btn-danger btn-sm" onclick="endMatch()">Finisci partita</button>
+      </div>
+      <div class="card">
+        <div class="player-list" id="select-list"></div>
+        <div class="sel-count">Selezionati: <span id="sel-count-num">0</span> / 7</div>
+      </div>
+      <div style="text-align:center;margin-top:1rem">
+        <button class="btn btn-primary btn-lg" id="btn-start-punto" onclick="startPunto()" disabled>▶ Inizia punto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IN GAME -->
+  <div id="screen-game" class="screen">
+    <div class="container">
+      <div class="score-bar">
+        <div class="score-team us"><div class="lbl">Noi</div><div class="pts" id="sc-us-game">0</div></div>
+        <div class="score-sep">—</div>
+        <div class="score-team them"><div class="lbl">Loro</div><div class="pts" id="sc-them-game">0</div></div>
+        <div class="score-info">
+          <div class="timer-display running" id="timer-display">00:00</div>
+          <div class="timer-label">Punto <span id="punto-num-game">1</span></div>
+        </div>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-outline btn-lg" id="btn-undo-stat" onclick="undoLastStat()" disabled>↩ Annulla ultima</button>
+        <button class="btn btn-primary btn-lg" onclick="meta()">✅ Meta</button>
+        <button class="btn btn-danger btn-lg" onclick="metaSubita()">❌ Meta subita</button>
+      </div>
+      <div class="game-layout" id="game-layout">
+        <div class="card lineup-panel">
+          <div class="card-title">In campo</div>
+          <div class="player-list" id="lineup-list"></div>
+        </div>
+        <div>
+          <div class="card-title" style="padding:0 0 6px">Statistiche punto</div>
+          <div class="stat-grid" id="stat-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div id="screen-summary" class="screen">
+    <div class="container">
+      <div class="card" style="text-align:center">
+        <div class="card-title" id="final-match-name">Risultato finale</div>
+        <div class="summary-score" id="final-score">0 — 0</div>
+        <div class="summary-sub" id="final-sub"></div>
+      </div>
+      <div class="sub-tabs">
+        <div class="sub-tab active" onclick="showSummaryTab('match')">Questa partita</div>
+        <div class="sub-tab" onclick="showSummaryTab('career')">Statistiche generali</div>
+      </div>
+      <div id="summary-match-view">
+        <div class="card">
+          <div class="card-title">Statistiche giocatori</div>
+          <div class="table-wrap"><table class="stats-table" id="stats-table-match"></table></div>
+        </div>
+      </div>
+      <div id="summary-career-view" style="display:none">
+        <div class="card">
+          <div class="card-title">Statistiche cumulative (tutte le partite salvate)</div>
+          <div class="table-wrap"><table class="stats-table" id="stats-table-career"></table></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:1rem;justify-content:center">
+        <button class="btn btn-primary btn-lg" onclick="exportExcel()">⬇ Esporta Excel</button>
+        <button class="btn btn-outline" onclick="newMatch()">Nuova partita</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /section-game -->
+
+<!-- ═══════ TOURNAMENT SECTION ═══════ -->
+<div id="section-tournament" style="display:none">
+  <div class="container">
+
+    <!-- LIST -->
+    <div id="tourn-list-view">
+      <div class="top-actions" style="margin-top:.5rem">
+        <span style="font-size:15px;font-weight:600">I tuoi tornei</span>
+        <button class="btn btn-primary btn-sm" onclick="openTournamentForm()">+ Nuovo torneo</button>
+      </div>
+      <div id="tournament-list"></div>
+    </div>
+
+    <!-- CREATE/EDIT FORM -->
+    <div id="tourn-form-view" style="display:none">
+      <div class="top-actions" style="margin-top:.5rem">
+        <button class="btn btn-outline btn-sm" onclick="closeTournamentForm()">← Indietro</button>
+        <span style="font-weight:600;font-size:15px" id="tourn-form-title">Nuovo torneo</span>
+        <span></span>
+      </div>
+      <div class="card">
+        <div class="card-title">Nome torneo</div>
+        <input type="text" id="tourn-name-input" placeholder="es. Torneo di Bologna 2026" maxlength="60" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:14px;outline:none"/>
+      </div>
+      <div class="card">
+        <div class="card-title">Roster del torneo</div>
+        <div class="name-input-row">
+          <input type="text" id="tourn-player-input" placeholder="Nome giocatore..." maxlength="30"/>
+          <button class="btn btn-primary" onclick="addTournPlayer()">Aggiungi</button>
+        </div>
+        <div class="player-chips" id="tourn-chips-container"></div>
+      </div>
+      <div style="text-align:center;margin-top:1.25rem">
+        <button class="btn btn-primary btn-lg" id="btn-save-tourn" onclick="saveTournament()" disabled>💾 Salva torneo</button>
+        <div style="margin-top:8px;font-size:13px;color:var(--muted)" id="tourn-roster-hint">Aggiungi almeno 7 giocatori</div>
+      </div>
+    </div>
+
+    <!-- DETAIL VIEW -->
+    <div id="tourn-detail-view" style="display:none">
+      <div class="top-actions" style="margin-top:.5rem">
+        <button class="btn btn-outline btn-sm" onclick="closeTournamentDetail()">← Indietro</button>
+        <span style="font-weight:600;font-size:15px" id="tourn-detail-title">Torneo</span>
+        <span style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="editTournamentRoster()">✎ Modifica roster</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTournament()">🗑 Elimina</button>
+        </span>
+      </div>
+      <div class="card">
+        <div class="card-title">Roster attuale (<span id="tourn-detail-count">0</span>)</div>
+        <div class="player-chips" id="tourn-detail-roster"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Partite del torneo</div>
+        <div id="tourn-detail-matches"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════ HISTORY SECTION ═══════ -->
+<div id="section-history" style="display:none">
+  <div class="container">
+    <div class="top-actions" style="margin-top:.5rem">
+      <span style="font-size:15px;font-weight:600">Partite salvate</span>
+      <button class="btn btn-primary btn-sm" onclick="exportAllExcel()">⬇ Esporta tutto</button>
+    </div>
+    <div id="history-list"></div>
+    <div id="history-detail" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+        <button class="btn btn-outline btn-sm" onclick="closeHistoryDetail()">← Indietro</button>
+        <span style="font-weight:600;font-size:15px" id="hd-title"></span>
+        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="exportSingleHistory()">⬇ Excel</button>
+      </div>
+      <div class="card"><div class="table-wrap"><table class="stats-table" id="hd-table"></table></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOM MODAL -->
+<div id="modal-overlay" class="modal-overlay" style="display:none" onclick="modalCancel()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-msg" id="modal-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="modal-cancel-btn" onclick="modalCancel()">Annulla</button>
+      <button class="btn btn-danger" id="modal-confirm-btn" onclick="modalConfirm()">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  CONSTANTS & STATE
+// ════════════════════════════════════════════════
+const STAT_KEYS = ['L','LT','M','E','ET','B','D','1','2','3','A1','A2','A3'];
+const STORAGE_KEY = 'ultimate_stats_history_v2';
+const TOURN_STORAGE_KEY = 'ultimate_stats_tournaments_v1';
+
+let roster = [];
+let matchName = '';
+let currentTournamentId = '';  // '' = nessun torneo
+let stats  = {};       // {id: {name, puntiGiocati, tempoMs, L, LT,...}} — cumulative
+let pointStats = {};   // {id: {L,...}} — stats for current punto only (reset each punto)
+let scoreUs = 0, scoreThem = 0;
+let currentPunto = 1;
+let selectedIds = [];
+let lineupIds   = [];
+let undoStack   = []; // [{playerId, key}] stack of stats recorded in current punto, for undo
+
+// Tournament form state
+let editingTournamentId = null; // null = creating new, else editing existing
+let tournFormPlayers = [];      // [{name,id}] while editing in the form
+let currentTournamentDetailId = null;
+
+// Timer state
+let timerInterval = null;
+let timerStart    = 0;
+let timerElapsed  = 0;
+
+// Currently open history match (for single export)
+let currentHistoryId = null;
+
+// ════════════════════════════════════════════════
+//  MODAL
+// ════════════════════════════════════════════════
+let _modalCb = null;
+function showModal(title, msg, confirmLabel, confirmClass, cb){
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-msg').textContent = msg;
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.textContent = confirmLabel || 'Conferma';
+  btn.className = 'btn ' + (confirmClass || 'btn-danger');
+  _modalCb = cb;
+  document.getElementById('modal-overlay').style.display = 'flex';
+}
+function modalConfirm(){
+  document.getElementById('modal-overlay').style.display = 'none';
+  if(_modalCb) { _modalCb(); _modalCb = null; }
+}
+function modalCancel(){
+  document.getElementById('modal-overlay').style.display = 'none';
+  _modalCb = null;
+}
+
+// ════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function initials(n){ return n.split(' ').map(w=>w[0]?.toUpperCase()||'').slice(0,2).join(''); }
+
+function fmtMs(ms){
+  if(!ms || ms < 0) return '0:00';
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = String(totalSec % 60).padStart(2,'0');
+  return `${m}:${s}`;
+}
+
+function showScreen(id){
+  document.querySelectorAll('#section-game .screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const labels={
+    'screen-setup':'Roster','screen-select':'Selezione',
+    'screen-game':'In gioco','screen-summary':'Riepilogo'
+  };
+  document.getElementById('phase-label').textContent = labels[id]||'';
+  const nameEl = document.getElementById('header-match-name');
+  nameEl.textContent = (id==='screen-setup') ? '' : (matchName ? `· ${matchName}` : '');
+}
+
+function switchTab(tab){
+  document.getElementById('tab-game').classList.toggle('active', tab==='game');
+  document.getElementById('tab-tournament').classList.toggle('active', tab==='tournament');
+  document.getElementById('tab-history').classList.toggle('active', tab==='history');
+  document.getElementById('section-game').style.display = tab==='game' ? '' : 'none';
+  document.getElementById('section-tournament').style.display = tab==='tournament' ? '' : 'none';
+  document.getElementById('section-history').style.display = tab==='history' ? '' : 'none';
+  if(tab==='history') renderHistory();
+  if(tab==='tournament'){
+    closeTournamentForm();
+    closeTournamentDetail();
+    renderTournamentList();
+  }
+}
+
+// ════════════════════════════════════════════════
+//  TIMER
+// ════════════════════════════════════════════════
+function startTimer(){
+  timerElapsed = 0;
+  timerStart   = Date.now();
+  const disp = document.getElementById('timer-display');
+  disp.textContent = '00:00';
+  disp.classList.add('running');
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    timerElapsed = Date.now() - timerStart;
+    document.getElementById('timer-display').textContent = fmtMs(timerElapsed);
+  }, 200);
+}
+
+function stopTimer(){
+  clearInterval(timerInterval);
+  timerInterval = null;
+  const elapsed = Date.now() - timerStart;
+  timerElapsed = elapsed;
+  const disp = document.getElementById('timer-display');
+  if(disp){ disp.textContent = fmtMs(elapsed); disp.classList.remove('running'); }
+  return elapsed;
+}
+
+// ════════════════════════════════════════════════
+//  SETUP / ROSTER
+// ════════════════════════════════════════════════
+document.getElementById('player-input').addEventListener('keydown', e=>{ if(e.key==='Enter') addPlayer(); });
+document.getElementById('tourn-player-input').addEventListener('keydown', e=>{ if(e.key==='Enter') addTournPlayer(); });
+document.getElementById('tourn-name-input').addEventListener('input', updateTournSaveBtn);
+
+function addPlayer(){
+  const inp = document.getElementById('player-input');
+  const name = inp.value.trim();
+  if(!name) return;
+  if(roster.find(p=>p.name.toLowerCase()===name.toLowerCase())){ inp.select(); return; }
+  roster.push({name, id:uid()});
+  inp.value=''; inp.focus();
+  renderChips(); updateStartBtn();
+  syncRosterToTournament();
+}
+
+function removePlayer(id){
+  roster = roster.filter(p=>p.id!==id);
+  renderChips(); updateStartBtn();
+  syncRosterToTournament();
+}
+
+function syncRosterToTournament(){
+  if(!currentTournamentId) return;
+  const tournaments = loadTournaments();
+  const idx = tournaments.findIndex(t=>t.id===currentTournamentId);
+  if(idx<0) return;
+  tournaments[idx].roster = roster.map(p=>({...p}));
+  saveTournaments(tournaments);
+  populateTournSelect();
+  toast('Roster del torneo aggiornato');
+}
+
+function renderChips(){
+  document.getElementById('chips-container').innerHTML =
+    roster.map(p=>`<span class="chip">${p.name}<button onclick="removePlayer('${p.id}')">✕</button></span>`).join('');
+}
+
+function updateStartBtn(){
+  const ok = roster.length >= 7;
+  document.getElementById('btn-start-match').disabled = !ok;
+  document.getElementById('roster-hint').textContent = ok
+    ? `${roster.length} giocatori nel roster`
+    : `Aggiungi almeno 7 giocatori (${roster.length} aggiunti)`;
+}
+
+function startMatch(){
+  matchName = document.getElementById('match-name-input').value.trim();
+  stats = {};
+  pointStats = {};
+  roster.forEach(p=>{
+    stats[p.id]={name:p.name, puntiGiocati:0, tempoMs:0};
+    STAT_KEYS.forEach(k=>stats[p.id][k]=0);
+  });
+  scoreUs=0; scoreThem=0; currentPunto=1;
+  showSelectScreen();
+}
+
+// ════════════════════════════════════════════════
+//  TOURNAMENTS
+// ════════════════════════════════════════════════
+function loadTournaments(){
+  try{ return JSON.parse(localStorage.getItem(TOURN_STORAGE_KEY)||'[]'); }
+  catch(e){ return []; }
+}
+function saveTournaments(list){
+  try{ localStorage.setItem(TOURN_STORAGE_KEY, JSON.stringify(list)); }
+  catch(e){ console.warn('Storage pieno'); }
+}
+
+function populateTournSelect(){
+  const sel = document.getElementById('tourn-select');
+  const tournaments = loadTournaments();
+  const prevVal = sel.value;
+  sel.innerHTML = '<option value="">— Nessun torneo —</option>' +
+    tournaments.map(t=>`<option value="${t.id}">${t.name} (${t.roster.length} giocatori)</option>`).join('');
+  // restore selection if still present
+  if(tournaments.find(t=>t.id===prevVal)) sel.value = prevVal;
+}
+
+function onTournamentSelectChange(){
+  const sel = document.getElementById('tourn-select');
+  currentTournamentId = sel.value;
+  if(!currentTournamentId){
+    return; // keep current manually-built roster untouched
+  }
+  const tournaments = loadTournaments();
+  const t = tournaments.find(x=>x.id===currentTournamentId);
+  if(!t) return;
+  // Load the tournament roster into the working roster (editable, but syncs back to tournament)
+  roster = t.roster.map(p=>({...p}));
+  renderChips();
+  updateStartBtn();
+  toast(`Roster del torneo "${t.name}" caricato`);
+}
+
+function toast(msg){
+  // lightweight inline toast using the modal title bar area is overkill; use a transient element
+  let el = document.getElementById('toast-el');
+  if(!el){
+    el = document.createElement('div');
+    el.id='toast-el';
+    el.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(window._toastTimeout);
+  window._toastTimeout = setTimeout(()=>{ el.style.opacity='0'; }, 1800);
+}
+
+// ---- Tournament form (create / edit roster) ----
+function openTournamentForm(prefillId){
+  editingTournamentId = prefillId || null;
+  document.getElementById('tourn-list-view').style.display='none';
+  document.getElementById('tourn-detail-view').style.display='none';
+  document.getElementById('tourn-form-view').style.display='';
+
+  if(editingTournamentId){
+    const t = loadTournaments().find(x=>x.id===editingTournamentId);
+    document.getElementById('tourn-form-title').textContent = 'Modifica torneo';
+    document.getElementById('tourn-name-input').value = t ? t.name : '';
+    tournFormPlayers = t ? t.roster.map(p=>({...p})) : [];
+  } else {
+    document.getElementById('tourn-form-title').textContent = 'Nuovo torneo';
+    document.getElementById('tourn-name-input').value = '';
+    tournFormPlayers = [];
+  }
+  document.getElementById('tourn-player-input').value='';
+  renderTournChips();
+  updateTournSaveBtn();
+}
+
+function closeTournamentForm(){
+  document.getElementById('tourn-form-view').style.display='none';
+  document.getElementById('tourn-list-view').style.display='';
+  editingTournamentId = null;
+}
+
+function addTournPlayer(){
+  const inp = document.getElementById('tourn-player-input');
+  const name = inp.value.trim();
+  if(!name) return;
+  if(tournFormPlayers.find(p=>p.name.toLowerCase()===name.toLowerCase())){ inp.select(); return; }
+  tournFormPlayers.push({name, id:uid()});
+  inp.value=''; inp.focus();
+  renderTournChips(); updateTournSaveBtn();
+}
+function removeTournPlayer(id){
+  tournFormPlayers = tournFormPlayers.filter(p=>p.id!==id);
+  renderTournChips(); updateTournSaveBtn();
+}
+function renderTournChips(){
+  document.getElementById('tourn-chips-container').innerHTML =
+    tournFormPlayers.map(p=>`<span class="chip">${p.name}<button onclick="removeTournPlayer('${p.id}')">✕</button></span>`).join('');
+}
+function updateTournSaveBtn(){
+  const ok = tournFormPlayers.length>=7 && document.getElementById('tourn-name-input').value.trim().length>0;
+  document.getElementById('btn-save-tourn').disabled = !ok;
+  const nameOk = document.getElementById('tourn-name-input').value.trim().length>0;
+  document.getElementById('tourn-roster-hint').textContent = !nameOk
+    ? 'Inserisci un nome per il torneo'
+    : (tournFormPlayers.length>=7 ? `${tournFormPlayers.length} giocatori nel roster` : `Aggiungi almeno 7 giocatori (${tournFormPlayers.length} aggiunti)`);
+}
+
+function saveTournament(){
+  const name = document.getElementById('tourn-name-input').value.trim();
+  if(!name || tournFormPlayers.length<7) return;
+  const tournaments = loadTournaments();
+  if(editingTournamentId){
+    const idx = tournaments.findIndex(t=>t.id===editingTournamentId);
+    if(idx>=0){
+      tournaments[idx].name = name;
+      tournaments[idx].roster = tournFormPlayers.map(p=>({...p}));
+    }
+  } else {
+    tournaments.unshift({ id: uid(), name, roster: tournFormPlayers.map(p=>({...p})), createdAt: new Date().toISOString() });
+  }
+  saveTournaments(tournaments);
+  populateTournSelect();
+  closeTournamentForm();
+  renderTournamentList();
+}
+
+// ---- Tournament list & detail ----
+function renderTournamentList(){
+  const tournaments = loadTournaments();
+  const list = document.getElementById('tournament-list');
+  if(!tournaments.length){
+    list.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)">Nessun torneo creato. Crea il primo torneo per riutilizzare lo stesso roster in più partite.</div>';
+    return;
+  }
+  const history = loadHistory();
+  list.innerHTML = tournaments.map(t=>{
+    const nMatches = history.filter(m=>m.tournamentId===t.id).length;
+    return `<div class="tourn-card" onclick="openTournamentDetail('${t.id}')">
+      <div class="tourn-card-header"><span class="tourn-card-name">🏆 ${t.name}</span></div>
+      <div class="tourn-card-sub">${t.roster.length} giocatori · ${nMatches} partit${nMatches===1?'a':'e'} giocate</div>
+    </div>`;
+  }).join('');
+}
+
+function openTournamentDetail(id){
+  currentTournamentDetailId = id;
+  const t = loadTournaments().find(x=>x.id===id);
+  if(!t) return;
+  document.getElementById('tourn-list-view').style.display='none';
+  document.getElementById('tourn-detail-view').style.display='';
+  document.getElementById('tourn-detail-title').textContent = t.name;
+  document.getElementById('tourn-detail-count').textContent = t.roster.length;
+  document.getElementById('tourn-detail-roster').innerHTML =
+    t.roster.map(p=>`<span class="chip" style="cursor:default">${p.name}</span>`).join('');
+
+  const history = loadHistory().filter(m=>m.tournamentId===id);
+  const matchesEl = document.getElementById('tourn-detail-matches');
+  if(!history.length){
+    matchesEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">Nessuna partita giocata in questo torneo finora.</div>';
+  } else {
+    matchesEl.innerHTML = history.map(m=>{
+      const d=new Date(m.date);
+      const dateStr=d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
+      return `<div class="history-card" style="margin-bottom:8px" onclick="switchTab('history');setTimeout(()=>openHistoryDetail('${m.id}'),0)">
+        <div class="history-card-header">
+          <span class="history-score">${m.scoreUs} — ${m.scoreThem}</span>
+          <span class="history-date">${dateStr}</span>
+        </div>
+        <div class="history-sub">${m.name || '(senza nome)'}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function closeTournamentDetail(){
+  document.getElementById('tourn-detail-view').style.display='none';
+  document.getElementById('tourn-list-view').style.display='';
+  currentTournamentDetailId = null;
+}
+
+function editTournamentRoster(){
+  if(!currentTournamentDetailId) return;
+  openTournamentForm(currentTournamentDetailId);
+}
+
+function deleteTournament(){
+  if(!currentTournamentDetailId) return;
+  const t = loadTournaments().find(x=>x.id===currentTournamentDetailId);
+  showModal(
+    'Elimina torneo',
+    `Eliminare il torneo "${t?t.name:''}"? Le partite già giocate resteranno nello storico, ma non saranno più collegate a questo torneo.`,
+    'Elimina',
+    'btn-danger',
+    function(){
+      const tournaments = loadTournaments().filter(x=>x.id!==currentTournamentDetailId);
+      saveTournaments(tournaments);
+      populateTournSelect();
+      if(currentTournamentId===currentTournamentDetailId){
+        currentTournamentId='';
+      }
+      closeTournamentDetail();
+      renderTournamentList();
+    }
+  );
+}
+
+// ════════════════════════════════════════════════
+//  SELECTION
+// ════════════════════════════════════════════════
+function showSelectScreen(){
+  selectedIds=[];
+  updateScoreBadges();
+  document.getElementById('punto-num-sel').textContent=`Punto ${currentPunto}`;
+  renderSelectList();
+  showScreen('screen-select');
+}
+
+function renderSelectList(){
+  document.getElementById('select-list').innerHTML = roster.map(p=>{
+    const sel = selectedIds.includes(p.id);
+    const played = stats[p.id]?.puntiGiocati || 0;
+    const ms     = stats[p.id]?.tempoMs || 0;
+    const hasMeta = played > 0;
+    const hasTempo = ms > 0;
+    return `<div class="player-row${sel?' selected':''}" onclick="toggleSelect('${p.id}')">
+      <div class="player-avatar">${initials(p.name)}</div>
+      <span class="player-name">${p.name}</span>
+      <span class="player-meta">
+        ${hasMeta ? `<span class="meta-pts">${played} pt</span>` : ''}
+        ${hasTempo ? `<span class="meta-time">⏱ ${fmtMs(ms)}</span>` : ''}
+      </span>
+      <span class="check-icon">✓</span>
+    </div>`;
+  }).join('');
+  document.getElementById('sel-count-num').textContent = selectedIds.length;
+  document.getElementById('btn-start-punto').disabled = selectedIds.length!==7;
+}
+
+function toggleSelect(id){
+  if(selectedIds.includes(id)){
+    selectedIds=selectedIds.filter(x=>x!==id);
+  } else {
+    if(selectedIds.length>=7) return;
+    selectedIds.push(id);
+  }
+  renderSelectList();
+}
+
+function startPunto(){
+  lineupIds=[...selectedIds];
+  undoStack=[];
+  lineupIds.forEach(id=>{
+    stats[id].puntiGiocati++;
+    pointStats[id]={}; // reset visual counters for this punto
+    STAT_KEYS.forEach(k=>pointStats[id][k]=0);
+  });
+  renderGameScreen();
+  showScreen('screen-game');
+  startTimer();
+}
+
+// ════════════════════════════════════════════════
+//  IN GAME
+// ════════════════════════════════════════════════
+function renderGameScreen(){
+  updateScoreBadges();
+  document.getElementById('punto-num-game').textContent=currentPunto;
+  document.getElementById('lineup-list').innerHTML=lineupIds.map(id=>{
+    const p=roster.find(r=>r.id===id);
+    return `<div class="player-row"><div class="player-avatar">${initials(p.name)}</div><span class="player-name">${p.name}</span></div>`;
+  }).join('');
+  renderStatGrid();
+  updateUndoBtn();
+}
+
+function renderStatGrid(){
+  document.getElementById('stat-grid').innerHTML=lineupIds.map(id=>{
+    const p=roster.find(r=>r.id===id);
+    const btns=STAT_KEYS.map(k=>{
+      const v=pointStats[id][k];
+      return `<button class="sbt" onclick="addStat('${id}','${k}',this)">${k}${v>0?`<span class="badge">${v}</span>`:''}</button>`;
+    }).join('');
+    return `<div class="stat-player-block"><div class="stat-player-name">${p.name}</div><div class="stat-btns">${btns}</div></div>`;
+  }).join('');
+}
+
+function addStat(id,key,btn){
+  stats[id][key]++;           // cumulative total (for summary/history)
+  pointStats[id][key]++;      // current punto display (reset each punto)
+  undoStack.push({playerId:id, key:key});
+  const v=pointStats[id][key];
+  let badge=btn.querySelector('.badge');
+  if(!badge){badge=document.createElement('span');badge.className='badge';btn.appendChild(badge);}
+  badge.textContent=v;
+  updateUndoBtn();
+}
+
+function undoLastStat(){
+  if(!undoStack.length) return;
+  const last = undoStack.pop();
+  stats[last.playerId][last.key]--;
+  pointStats[last.playerId][last.key]--;
+  if(stats[last.playerId][last.key]<0) stats[last.playerId][last.key]=0;
+  if(pointStats[last.playerId][last.key]<0) pointStats[last.playerId][last.key]=0;
+  renderStatGrid();
+  updateUndoBtn();
+  const p = roster.find(r=>r.id===last.playerId);
+  toast(`Annullato: ${last.key} — ${p ? p.name : ''}`);
+}
+
+function updateUndoBtn(){
+  const btn = document.getElementById('btn-undo-stat');
+  if(!btn) return;
+  btn.disabled = undoStack.length===0;
+}
+
+function endPunto(){
+  const ms = stopTimer();
+  // Add elapsed time to each lineup player
+  lineupIds.forEach(id=>{ stats[id].tempoMs += ms; });
+  return ms;
+}
+
+function meta(){
+  endPunto();
+  scoreUs++; currentPunto++;
+  updateScoreBadges();
+  showSelectScreen();
+}
+
+function metaSubita(){
+  endPunto();
+  scoreThem++; currentPunto++;
+  updateScoreBadges();
+  showSelectScreen();
+}
+
+function updateScoreBadges(){
+  ['sel','game'].forEach(s=>{
+    const u=document.getElementById(`sc-us-${s}`);
+    const t=document.getElementById(`sc-them-${s}`);
+    if(u) u.textContent=scoreUs;
+    if(t) t.textContent=scoreThem;
+  });
+}
+
+// ════════════════════════════════════════════════
+//  END MATCH
+// ════════════════════════════════════════════════
+function endMatch(){
+  showModal(
+    'Finisci partita',
+    'Vuoi davvero terminare la partita? Le statistiche verranno salvate nello storico.',
+    'Termina partita',
+    'btn-danger',
+    function(){
+      if(timerInterval) endPunto(); // stop timer if mid-punto
+      saveToHistory();
+      renderSummaryMatch();
+      renderSummaryCareer();
+      showSummaryTab('match');
+      showScreen('screen-summary');
+      document.getElementById('final-score').textContent=`${scoreUs} — ${scoreThem}`;
+      document.getElementById('final-sub').textContent=`Punti giocati: ${currentPunto-1}`;
+      let tournLabel = '';
+      if(currentTournamentId){
+        const t = loadTournaments().find(x=>x.id===currentTournamentId);
+        if(t) tournLabel = `🏆 ${t.name} · `;
+      }
+      document.getElementById('final-match-name').textContent = tournLabel + (matchName ? matchName : 'Risultato finale');
+    }
+  );
+}
+
+// ════════════════════════════════════════════════
+//  SUMMARY
+// ════════════════════════════════════════════════
+function showSummaryTab(tab){
+  document.getElementById('summary-match-view').style.display = tab==='match'?'':'none';
+  document.getElementById('summary-career-view').style.display = tab==='career'?'':'none';
+  document.querySelectorAll('.sub-tab').forEach((el,i)=>{
+    el.classList.toggle('active', (i===0&&tab==='match')||(i===1&&tab==='career'));
+  });
+}
+
+function buildStatsTable(players, tableId){
+  const cols = ['Giocatore','Punti','Tempo',...STAT_KEYS];
+  const totals={puntiGiocati:0,tempoMs:0};
+  STAT_KEYS.forEach(k=>totals[k]=0);
+  players.forEach(p=>{
+    totals.puntiGiocati+=p.puntiGiocati;
+    totals.tempoMs+=(p.tempoMs||0);
+    STAT_KEYS.forEach(k=>totals[k]+=p[k]||0);
+  });
+
+  const head=`<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>`;
+  const rows=players.sort((a,b)=>b.puntiGiocati-a.puntiGiocati).map(p=>`<tr>
+    <td>${p.name}</td>
+    <td>${p.puntiGiocati}</td>
+    <td style="white-space:nowrap;font-weight:500">${fmtMs(p.tempoMs||0)}</td>
+    ${STAT_KEYS.map(k=>`<td class="${(p[k]||0)===0?'zero':''}">${p[k]||'—'}</td>`).join('')}
+  </tr>`).join('');
+  const trow=`<tr class="total-row"><td>TOTALE</td><td>${totals.puntiGiocati}</td><td>${fmtMs(totals.tempoMs)}</td>${STAT_KEYS.map(k=>`<td>${totals[k]||0}</td>`).join('')}</tr>`;
+  document.getElementById(tableId).innerHTML=head+`<tbody>${rows}${trow}</tbody>`;
+}
+
+function renderSummaryMatch(){
+  buildStatsTable(Object.values(stats).map(p=>({...p})), 'stats-table-match');
+}
+
+function renderSummaryCareer(){
+  const history = loadHistory();
+  const career = buildCareerMap(history);
+  const players = Object.values(career);
+  if(!players.length){
+    document.getElementById('stats-table-career').innerHTML='<tr><td colspan="15" style="text-align:center;padding:20px;color:var(--muted)">Nessuna partita salvata</td></tr>';
+    return;
+  }
+  buildStatsTable(players,'stats-table-career');
+}
+
+// ════════════════════════════════════════════════
+//  LOCAL STORAGE / HISTORY
+// ════════════════════════════════════════════════
+function loadHistory(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); }
+  catch(e){ return []; }
+}
+
+function saveToHistory(){
+  const history=loadHistory();
+  let tournamentName = '';
+  if(currentTournamentId){
+    const t = loadTournaments().find(x=>x.id===currentTournamentId);
+    if(t) tournamentName = t.name;
+  }
+  const record={
+    id: uid(),
+    name: matchName || '',
+    date: new Date().toISOString(),
+    tournamentId: currentTournamentId || '',
+    tournamentName: tournamentName,
+    scoreUs, scoreThem,
+    puntiGiocati: currentPunto-1,
+    players: Object.values(stats).map(p=>({...p}))
+  };
+  history.unshift(record);
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(history)); }
+  catch(e){ console.warn('Storage pieno'); }
+}
+
+function renderHistory(){
+  const history=loadHistory();
+  const list=document.getElementById('history-list');
+  document.getElementById('history-detail').style.display='none';
+  list.style.display='';
+  if(!history.length){
+    list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted)">Nessuna partita salvata</div>';
+    return;
+  }
+  list.innerHTML=history.map(m=>{
+    const d=new Date(m.date);
+    const dateStr=d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    const totalTime = m.players.reduce((s,p)=>s+(p.tempoMs||0),0);
+    // Total unique time = max single player time * nr of punti (approx), just show total tempo partita
+    const puntoMs = totalTime / 7; // each punto has 7 players accumulating same time
+    const nameHtml = m.name ? `<div style="font-size:14px;font-weight:600;margin-bottom:2px">${m.name}</div>` : '';
+    const tournBadge = m.tournamentName ? `<div class="tourn-badge" style="margin-bottom:6px">🏆 ${m.tournamentName}</div>` : '';
+    return `<div class="history-card" onclick="openHistoryDetail('${m.id}')">
+      ${tournBadge}
+      ${nameHtml}
+      <div class="history-card-header">
+        <span class="history-score">${m.scoreUs} — ${m.scoreThem}</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="history-date">${dateStr}</span>
+          <button class="history-del" onclick="event.stopPropagation();deleteHistory('${m.id}')" title="Elimina">🗑</button>
+        </span>
+      </div>
+      <div class="history-sub">${m.puntiGiocati} punti · ${m.players.length} giocatori · ⏱ ${fmtMs(puntoMs)}</div>
+    </div>`;
+  }).join('');
+}
+
+function openHistoryDetail(id){
+  const history=loadHistory();
+  const m=history.find(x=>x.id===id);
+  if(!m) return;
+  currentHistoryId = id;
+  document.getElementById('history-list').style.display='none';
+  const detail=document.getElementById('history-detail');
+  const d=new Date(m.date);
+  document.getElementById('hd-title').textContent=`${m.tournamentName ? '🏆 '+m.tournamentName+' · ' : ''}${m.name ? m.name+' · ' : ''}${m.scoreUs}—${m.scoreThem} · ${d.toLocaleDateString('it-IT')}`;
+  detail.style.display='';
+
+  const cols=['Giocatore','Punti','Tempo',...STAT_KEYS];
+  const totals={puntiGiocati:0,tempoMs:0};STAT_KEYS.forEach(k=>totals[k]=0);
+  m.players.forEach(p=>{
+    totals.puntiGiocati+=p.puntiGiocati;
+    totals.tempoMs+=(p.tempoMs||0);
+    STAT_KEYS.forEach(k=>totals[k]+=(p[k]||0));
+  });
+  const head=`<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>`;
+  const rows=m.players.sort((a,b)=>b.puntiGiocati-a.puntiGiocati).map(p=>`<tr>
+    <td>${p.name}</td><td>${p.puntiGiocati}</td>
+    <td style="white-space:nowrap;font-weight:500">${fmtMs(p.tempoMs||0)}</td>
+    ${STAT_KEYS.map(k=>`<td class="${(p[k]||0)===0?'zero':''}">${p[k]||'—'}</td>`).join('')}
+  </tr>`).join('');
+  const trow=`<tr class="total-row"><td>TOTALE</td><td>${totals.puntiGiocati}</td><td>${fmtMs(totals.tempoMs)}</td>${STAT_KEYS.map(k=>`<td>${totals[k]||0}</td>`).join('')}</tr>`;
+  document.getElementById('hd-table').innerHTML=head+`<tbody>${rows}${trow}</tbody>`;
+}
+
+function closeHistoryDetail(){
+  currentHistoryId = null;
+  document.getElementById('history-detail').style.display='none';
+  document.getElementById('history-list').style.display='';
+}
+
+function deleteHistory(id){
+  showModal(
+    'Elimina partita',
+    'Eliminare questa partita dallo storico? L\'azione non è reversibile.',
+    'Elimina',
+    'btn-danger',
+    function(){
+      const h=loadHistory().filter(x=>x.id!==id);
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(h));
+      renderHistory();
+    }
+  );
+}
+
+// ════════════════════════════════════════════════
+//  EXCEL EXPORT
+// ════════════════════════════════════════════════
+function buildExcelRows(players){
+  const header=['Giocatore','Punti giocati','Tempo',...STAT_KEYS];
+  const sorted = [...players].sort((a,b)=>b.puntiGiocati-a.puntiGiocati);
+  const rows = sorted.map(p=>[p.name, p.puntiGiocati, fmtMs(p.tempoMs||0), ...STAT_KEYS.map(k=>p[k]||0)]);
+  const totals=['TOTALE',
+    players.reduce((s,p)=>s+p.puntiGiocati,0),
+    fmtMs(players.reduce((s,p)=>s+(p.tempoMs||0),0)),
+    ...STAT_KEYS.map(k=>players.reduce((s,p)=>s+(p[k]||0),0))
+  ];
+  return [header,...rows,[],totals];
+}
+
+function makeWs(rows){
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:22},{wch:14},{wch:8},...STAT_KEYS.map(()=>({wch:7}))];
+  return ws;
+}
+
+function safeSheetName(name){
+  // Excel sheet names: max 31 chars, no \ / ? * [ ] :
+  return (name || 'Partita').replace(/[\\\/\?\*\[\]:]/g,'-').slice(0,31);
+}
+function safeFileName(name){
+  return (name || '').replace(/[\\\/\?\*\[\]:"<>|]/g,'-').trim();
+}
+
+function checkXlsxAvailable(){
+  if(typeof XLSX === 'undefined'){
+    showModal(
+      'Libreria Excel non disponibile',
+      'La libreria per generare i file Excel non è riuscita a caricarsi (probabilmente perché sei offline e questa è la prima volta che apri l\'app). Connettiti a internet almeno una volta per scaricarla: dopo verrà mantenuta in cache dal browser.',
+      'OK', 'btn-primary', function(){}
+    );
+    return false;
+  }
+  return true;
+}
+
+function exportExcel(){
+  if(!checkXlsxAvailable()) return;
+  const wb=XLSX.utils.book_new();
+  let tournName = '';
+  if(currentTournamentId){
+    const t = loadTournaments().find(x=>x.id===currentTournamentId);
+    if(t) tournName = t.name;
+  }
+  XLSX.utils.book_append_sheet(wb, makeWs(buildExcelRows(Object.values(stats).map(p=>({...p})))), safeSheetName(matchName || 'Partita'));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['Torneo', tournName || '(nessuno)'],['Partita', matchName || '(senza nome)'],['Risultato'],['Noi',scoreUs],['Loro',scoreThem],['Punti giocati',currentPunto-1]
+  ]), 'Punteggio');
+  const career=buildCareerMap(loadHistory());
+  if(Object.keys(career).length){
+    XLSX.utils.book_append_sheet(wb, makeWs(buildExcelRows(Object.values(career))), 'Statistiche generali');
+  }
+  const fname = matchName ? `ultimate_${safeFileName(matchName)}.xlsx` : `ultimate_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb,fname);
+}
+
+function exportSingleHistory(){
+  if(!checkXlsxAvailable()) return;
+  if(!currentHistoryId) return;
+  const history=loadHistory();
+  const m=history.find(x=>x.id===currentHistoryId);
+  if(!m) return;
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, makeWs(buildExcelRows(m.players.map(p=>({...p})))), safeSheetName(m.name || 'Partita'));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['Torneo', m.tournamentName || '(nessuno)'],['Partita', m.name || '(senza nome)'],['Risultato'],['Noi',m.scoreUs],['Loro',m.scoreThem],['Punti giocati',m.puntiGiocati]
+  ]), 'Punteggio');
+  const d=new Date(m.date).toISOString().slice(0,10);
+  const fname = m.name ? `ultimate_${safeFileName(m.name)}_${d}.xlsx` : `ultimate_${d}_${m.scoreUs}-${m.scoreThem}.xlsx`;
+  XLSX.writeFile(wb,fname);
+}
+
+function exportAllExcel(){
+  if(!checkXlsxAvailable()) return;
+  const history=loadHistory();
+  if(!history.length){
+    showModal('Nessuna partita salvata', 'Non ci sono partite nello storico da esportare.', 'OK', 'btn-primary', function(){});
+    return;
+  }
+  const wb=XLSX.utils.book_new();
+  const usedNames = new Set();
+  history.forEach(m=>{
+    const d=new Date(m.date).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+    let base = m.name ? `${m.name}` : `${d} ${m.scoreUs}-${m.scoreThem}`;
+    let name = safeSheetName(base);
+    let i=2;
+    while(usedNames.has(name)){ name = safeSheetName(`${base} (${i})`); i++; }
+    usedNames.add(name);
+    XLSX.utils.book_append_sheet(wb, makeWs(buildExcelRows(m.players.map(p=>({...p})))), name);
+  });
+  const career=buildCareerMap(history);
+  if(Object.keys(career).length){
+    XLSX.utils.book_append_sheet(wb, makeWs(buildExcelRows(Object.values(career))), 'Statistiche generali');
+  }
+  XLSX.writeFile(wb,`ultimate_storico_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function buildCareerMap(history){
+  const career={};
+  history.forEach(m=>{
+    m.players.forEach(p=>{
+      if(!career[p.name]){career[p.name]={name:p.name,puntiGiocati:0,tempoMs:0};STAT_KEYS.forEach(k=>career[p.name][k]=0);}
+      career[p.name].puntiGiocati+=p.puntiGiocati;
+      career[p.name].tempoMs+=(p.tempoMs||0);
+      STAT_KEYS.forEach(k=>career[p.name][k]+=(p[k]||0));
+    });
+  });
+  return career;
+}
+
+function newMatch(){
+  showModal(
+    'Nuova partita',
+    'Iniziare una nuova partita? Il roster attuale verrà azzerato (le partite già terminate restano nello storico).',
+    'Nuova partita',
+    'btn-primary',
+    function(){
+      if(timerInterval){ clearInterval(timerInterval); timerInterval=null; }
+      roster=[];stats={};pointStats={};scoreUs=0;scoreThem=0;currentPunto=1;selectedIds=[];lineupIds=[];matchName='';currentTournamentId='';
+      document.getElementById('match-name-input').value='';
+      document.getElementById('tourn-select').value='';
+      renderChips();updateStartBtn();
+      showScreen('screen-setup');
+    }
+  );
+}
+
+// ════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════
+populateTournSelect();
+</script>
+</body>
+</html>
